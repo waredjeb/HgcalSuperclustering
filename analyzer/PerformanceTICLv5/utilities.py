@@ -107,6 +107,7 @@ def plot_ratio_multiple(values1: list, values2: list, bins, rangeX, labels: list
 
         hep.cms.text("Simulation", ax=ax1)
         ax1.legend()
+        # ax1.set_xlim(rangeX)
         ax1.set_ylim(0, 1.1)
         ax1.grid(True)
 
@@ -115,16 +116,21 @@ def plot_ratio_multiple(values1: list, values2: list, bins, rangeX, labels: list
             ratio = np.zeros_like(len(bin_centers), dtype=float)
             ratio_err_low = np.zeros_like(len(bin_centers), dtype=float)
             ratio_err_high = np.zeros_like(len(bin_centers), dtype=float)
+            # Lower pad: ratio
+            ax2.errorbar(bin_centers, ratio, yerr=[ratio_err_low, ratio_err_high], color=col,
+                        label=ratio_label, capsize=3, fmt="o", markersize=5, linestyle='-')
         else:
-            ratio = np.nan_to_num(np.array(ratios[0]) / np.array(ratios[1]), 0)
-            ratio_err_low = np.sqrt((np.array(errorsLow[0]) / np.array(ratios[0]))**2 + (
-                np.array(errorsHigh[0]) / np.array(ratios[0]))**2)
-            ratio_err_high = np.sqrt((np.array(errorsLow[0]) / np.array(ratios[1]))**2 + (
-                np.array(errorsHigh[0]) / np.array(ratios[1]))**2)
+            for r, errL, errU, col in zip(ratios[1:], errorsLow[1:], errorsHigh[1:], colors[1:]):
 
-        # Lower pad: ratio
-        ax2.errorbar(bin_centers, ratio, yerr=[ratio_err_low, ratio_err_high], color=ratio_color,
-                     label=ratio_label, capsize=3, fmt="o", markersize=5, linestyle='-')
+                ratio = np.nan_to_num(np.array(r) / np.array(ratios[0]), 0)
+                ratio_err_low = np.sqrt((np.array(errorsLow[0]) / np.array(ratios[0]))**2 + (
+                    np.array(errL) / np.array(r))**2)
+                ratio_err_high = np.sqrt((np.array(errorsHigh[0]) / np.array(ratios[0]))**2 + (
+                    np.array(errU) / np.array(r))**2)
+
+                # Lower pad: ratio
+                ax2.errorbar(bin_centers, ratio, yerr=[ratio_err_low, ratio_err_high], color=col,
+                            label=ratio_label, capsize=3, fmt="o", markersize=5, linestyle='-')
         ax2.set_ylabel(ratio_label)
         ax2.set_ylim(0, 2.5)
 
