@@ -15,12 +15,14 @@ import hist
 from analyzer.dumperReader.reader import *
 from analyzer.driver.fileTools import *
 from analyzer.driver.computations import *
-from analyzer.computations.tracksters import tracksters_seedProperties, CPtoTrackster_properties, CPtoTracksterMerged_properties
+from analyzer.computations.tracksters import tracksters_seedProperties, CPtoTrackster_properties, CPtoTracksterMerged_properties, CP2HitstoTrackster_properties
 from analyzer.energy_resolution.fit import *
 import os
 from matplotlib.colors import ListedColormap
 from matplotlib import cm
 from utilities import *
+import subprocess
+import ROOT
 
 def create_directory(directory_path):
     if not os.path.exists(directory_path):
@@ -30,49 +32,33 @@ def create_directory(directory_path):
         print(f"Directory '{directory_path}' already exists.")
     return directory_path
 
-fileV5 =  "./ROOTALE/"
-fileV4 =  "./ROOTALE/"
-fileV5 =  "/eos/cms/store/group/dpg_hgcal/comm_hgcal/wredjeb/TICLv5Performance/ComparisonPR/histoBase/"
-fileV4 =  "/eos/cms/store/group/dpg_hgcal/comm_hgcal/wredjeb/TICLv5Performance/ComparisonPR/histoV4/"
-#fileV5Old = "/eos/cms/store/group/dpg_hgcal/comm_hgcal/wredjeb/TICLv5Performance/ComparisonPR/histoBase/"
-#fileV5Old =  "/eos/cms/store/group/dpg_hgcal/comm_hgcal/wredjeb/TICLv5Performance/ComparisonPR/histoBase/"
-#fileV5Old =  "/eos/cms/store/group/dpg_hgcal/comm_hgcal/wredjeb/TICLv5Performance/CloseByElectronPU/histo/"
-#fileV5 =  "/eos/cms/store/group/dpg_hgcal/comm_hgcal/wredjeb/TICLv5Performance/CloseByElectronPU/histo/"
-#fileV4 =  "/eos/cms/store/group/dpg_hgcal/comm_hgcal/wredjeb/TICLv5Performance/CloseByElectronPU/histoV4/"
-#fileV4 = "/eos/cms/store/group/dpg_hgcal/comm_hgcal/wredjeb/TICLv5Performance/ComparisonPR/histoV4/"
-#fileV5Old = "/eos/cms/store/group/dpg_hgcal/comm_hgcal/wredjeb/EnergyRegressionTICLV5New/CMSSW_14_X/D99/CloseByElectron_v5/histo/"
+fileV5 =  "/eos/cms/store/group/dpg_hgcal/comm_hgcal/wredjeb/TICLv5Performance/CloseByPionPU/histo/"
+fileV4 =  "/eos/cms/store/group/dpg_hgcal/comm_hgcal/wredjeb/TICLv5Performance/CloseByPionPU/histoV4/"
 
 
-OutputDir = "/eos/user/w/wredjeb/www/HGCAL/TICLv5Performance/CloseByPionPU200V5vsV4TEST/"
-#OutputDir = "./TestAle"
+OutputDir = "/eos/user/w/wredjeb/www/HGCAL/TICLv5Performance/CloseByPion200PUPostGeomFixPostTICLGraphFixTighter/"
 create_directory(OutputDir)
 
 # Define the DumperInput objects
 dumperInputs = [
-    DumperInputManager([fileV5], limitFileCount=1),
-    DumperInputManager([fileV4], limitFileCount=1)
+    DumperInputManager([fileV5], limitFileCount=None),
+    DumperInputManager([fileV4], limitFileCount=None)
 ]
 
 # Run computations for each DumperInput object
-results = [runComputations([CPtoTrackster_properties, CPtoTracksterMerged_properties], dumperInput, max_workers=24) for dumperInput in dumperInputs]
+results = [runComputations([CPtoTracksterMerged_properties,CP2HitstoTrackster_properties], dumperInput, max_workers=24) for dumperInput in dumperInputs]
 
-mergedResults = [result[1] for result in results]
-mergedResults.extend([result[0] for result in results])
-#mergedV5 = resV5[1]
-#mergedV4 = resV4[1]
+mergedResults = [result[0] for result in results]
+mergedResults.extend([result[1] for result in results])
 fig = plt.figure(figsize = (15,10))
 # Define plot parameters
 energyBins = 100
 etaBins = 50
 etaBins = 50
 colors = ['red', 'blue', 'green','orange', 'black']
-labels = ['TICLv5', 'TICLv4', 'TICLv5C3D', 'TICLv4C3D', 'SimTrackster']
-#labels = ['TICLv5', 'TICLv4', 'TICLv4', 'SimTracksters']
+labels = ['TICLv5', 'TICLv4']#, 'TICLv52Hits', 'TICLv42Hits', 'SimTrackster']
 
 # Create output directory
-outputDirTracksterMerged = create_directory(OutputDir + "/tracksterMerged/")
-#### BestRECO Plots #####
-#print(mergedV5)
 outputDirTracksterMerged = create_directory(OutputDir + "/tracksterMerged/")
 fig = plt.figure(figsize=(15, 10))
 norm = True
@@ -118,6 +104,7 @@ plt.close()
 
 ### Efficient Reco Trackster Plots
 # Filter the data based on the condition raw_energy/regressed_energy_CP >= 0.5\
+
 filteredMergedResults = [m[m['raw_energy'] / m['regressed_energy_CP'] >= 0.5] for m in mergedResults]
 #filtered_data_V5 = mergedV5[mergedV5['raw_energy'] / mergedV5['regressed_energy_CP'] >= 0.5]
 #filtered_data_V4 = mergedV4[mergedV4['raw_energy'] / mergedV4['regressed_energy_CP'] >= 0.5]
@@ -351,63 +338,45 @@ for m, l in zip(mergedResults, labels):
       mergedDen.append((m.barycenter_x_CP**2 + m.barycenter_y_CP**2)**0.5)
       labelsTh.append(f"{l}- {th}")
   plot_ratio_multiple(mergedNum, mergedDen, Rbins, rangeX = (40,180), labels = labelsTh, colors = colors, xlabel="Phi", saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyR{l}.png", doRatio = False)
-#
-#
-#mergedNum = []
-#mergedDen = []
-#etaBins = 20
-#labels = []
-#for th in effTh:
-#    filtered_data_V5 = mergedV5[mergedV5['sharedE'] / mergedV5['raw_energy_CP'] >= th]
-#    mergedNum.append(filtered_data_V5.barycenter_eta_CP)
-#    mergedDen.append(mergedV5.barycenter_eta_CP)
-#    labels.append(f"TICLv5 - {th}")
-#plot_ratio_multiple(mergedNum, mergedDen, etaBins, rangeX = (-np.pi,np.pi), labels = labels, colors = colors, xlabel="eta", saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyTICLv5_eta.png", doRatio = False)
-#
-#mergedNum = []
-#mergedDen = []
-#Rbins = 50
-#labels = []
-#for th in effTh:
-#    filtered_data_V5 = mergedV5[mergedV5['sharedE'] / mergedV5['raw_energy_CP'] >= th]
-#    mergedNum.append((filtered_data_V5.barycenter_x_CP**2 + filtered_data_V5.barycenter_y_CP**2)**0.5)
-#    mergedDen.append((mergedV5.barycenter_x_CP**2 + mergedV5.barycenter_y_CP**2)**0.5)
-#    labels.append(f"TICLv5 - {th}")
-#plot_ratio_multiple(mergedNum, mergedDen, etaBins, rangeX = (40,180), labels = labels, colors = colors, xlabel="R", saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyTICLv5_R.png", doRatio = False)
-#
-##same thing for v4
-#mergedNum = []
-#mergedDen = []
-#labels = []
-#for th in effTh:
-#    filtered_data_V4 = mergedV4[mergedV4['sharedE'] / mergedV4['raw_energy_CP'] >= th]
-#    mergedNum.append(filtered_data_V4.raw_energy_CP)
-#    mergedDen.append(mergedV4.raw_energy_CP)
-#    labels.append(f"TICLv4 - {th}")
-#print(len(mergedNum))
-#plot_ratio_multiple(mergedNum, mergedDen, energyBins, rangeX = (0,600), labels = labels, colors = colors, xlabel="Raw Energy [GeV]", saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyTICLv4_energy.png", doRatio = False)
-#
-#
-#mergedNum = []
-#mergedDen = []
-#etaBins = 20
-#labels = []
-#for th in effTh:
-#    filtered_data_V4 = mergedV4[mergedV4['sharedE'] / mergedV4['raw_energy_CP'] >= th]
-#    mergedNum.append(filtered_data_V4.barycenter_eta_CP)
-#    mergedDen.append(mergedV4.barycenter_eta_CP)
-#    labels.append(f"TICLV4 - {th}")
-#plot_ratio_multiple(mergedNum, mergedDen, etaBins, rangeX = (1.7,2.7), labels = labels, colors = colors, xlabel="Eta", saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyTICLV4_eta.png", doRatio = False)
-#
-#
-#mergedNum = []
-#mergedDen = []
-#etaBins = 20
-#labels = []
-#for th in effTh:
-#    filtered_data_V4 = mergedV4[mergedV4['sharedE'] / mergedV4['raw_energy_CP'] >= th]
-#    mergedNum.append(filtered_data_V4.barycenter_eta_CP)
-#    mergedDen.append(mergedV4.barycenter_eta_CP)
-#    labels.append(f"TICLV4 - {th}")
-#plot_ratio_multiple(mergedNum, mergedDen, etaBins, rangeX = (-np.pi,np.pi), labels = labels, colors = colors, xlabel="eta", saveFileName=f"{outputDirEffFakeMergeDup}/efficiencyTICLV4_eta.png", doRatio = False)
-#
+
+#group by mergedResults by regressed_energy_CP
+outputDirEffFakeMergeDup = create_directory(OutputDir + "/tracksterMerged/Fits/")
+energyBins = [(0,20), (20, 30), (30,40), (40,50), (50, 70), (70, 100), (100,200), (200, 300), (300, 400), (400, 600)]
+# Initialize a dictionary to hold results grouped by bins
+grouped_results = {bin_range: [] for bin_range in energyBins}
+# Create and fill a ROOT.TH1F histogram for each bin
+histograms = {}
+histosNp = []
+for bin_range in energyBins:
+    bin_name = f"hist_{bin_range[0]}_{bin_range[1]}"
+    # Create a histogram with a range covering the bin limits
+    histograms[bin_range] = ROOT.TH1F(bin_name, f"Energy Histogram {bin_range[0]}-{bin_range[1]} GeV", 50, 0, 2.0)
+    histosNp.append(hist.Hist(hist.axis.Regular(50, 0, 2.0, name="x", label="Response w.r.t Regressed")))
+# Group the results by the energy bins
+
+fig = plt.figure(figsize=(15, 10))
+for r, l in zip(mergedResults, labels):
+    energies = r.regressed_energy_CP
+    raw_energies = r.raw_energy
+    for bin_range in energyBins:
+        for reg_en, raw_en in zip(energies, raw_energies):
+            if bin_range[0] <= reg_en < bin_range[1]:
+                histograms[bin_range].Fill(raw_en/reg_en)
+    #normalize histograms
+    for h in histograms.values():
+        h.Scale(1./h.Integral())
+    effSigmas = [getEffSigma(h) for h in histograms.values()]
+    effSigmas_err = [s/np.sqrt(2*h.GetEntries()) for s, h in zip(effSigmas, histograms.values())]
+    #now plot effsigmas against the energy bins
+    plt.errorbar([np.mean(b) for b in energyBins], effSigmas, xerr=[np.std(b) for b in energyBins], yerr=effSigmas_err, label=f"{l}", capsize=5, fmt='o', lw=2)
+plt.xlabel("Regressed Energy [GeV]")
+plt.ylabel("$\sigma$")
+plt.legend()
+plt.savefig(outputDirEffFakeMergeDup + "EffSigma.png")
+
+
+
+
+#execute in bash pb_copy_index.py -r /eos/user/w/wredjeb/www/HGCAL/TICLv5Performance/Resolution/CloseByPion0PU_0GeV_window0p072_15LCs_PostGeomFix/ -c
+output_dir = OutputDir
+subprocess.run(["pb_copy_index.py", "-r", output_dir])

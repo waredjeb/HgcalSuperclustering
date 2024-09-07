@@ -34,11 +34,11 @@ def _dumperTypesFromFile(filePath:Path) -> list[DumperType]:
             if "associations" in ticlDumperKeys:
                 res.append(DumperType.TICL)
             if "superclustering" in ticlDumperKeys:
-                res.append(DumperType.TICLsupercls)
+                res.append(DumperType.TICL)
         if "superclusteringSampleDumper" in fileKeys:
-            res.append(DumperType.SuperclsSample)
+            res.append(DumperType.TICL)
         if "Events" in fileKeys:
-            res.append(DumperType.DNNStep3)
+            res.append(DumperType.TICL)
     return res
 
         
@@ -51,8 +51,9 @@ class SingleInputReader:
 
     def addFile(self, path:Path, dumperTypes:list[DumperType]) -> None:
         for dumperType in dumperTypes:
+            
             if dumperType in self._paths:
-                warning = f"Duplicate {dumperType} in {self._paths[dumperType]} and {path}"
+                warning = f"Duplicate {dumperType} in {self._paths[dumperType]} and {path} {self._paths}"
                 warnings.warn(warning)
                 #raise RuntimeError(f"Duplicate {dumperType} in {self._paths[dumperType]} and {path}")
             self._paths[dumperType] = path
@@ -78,7 +79,7 @@ class SingleInputReader:
     @cached_property
     def ticlDumperReader(self) -> DumperReader:
         inputFiles = []
-        for dumperType in (DumperType.TICLsupercls, DumperType.TICL):
+        for dumperType in (DumperType.TICL, DumperType.TICL):
             try:
                 inputFiles.append(self.getFileForDumperType(dumperType))
             except KeyError:
@@ -147,7 +148,8 @@ class DumperInputManager:
             - restrictToAvailableDumperTypes : ignore all samples for which we do not have all the dumperTypes specified
         """
         #pattern_dumper = re.compile(r"[a-zA-Z_\-0-9]{0,}[dD]umper_([0-9]{1,})\.root")
-        pattern_dumper = re.compile(r"[a-zA-Z_\-0-9]{1,}_([0-9]{1,})\.root")
+        # pattern_dumper = re.compile(r"[a-zA-Z]_\-[0-9]{1,}_([0-9]{1,})\.root")
+        pattern_dumper = re.compile(r"[a-zA-Z_\-0-9]+_(\d+)_(\d+)\.root")
         self.inputPerSample: Dict[int, SingleInputReader] = dict()
 
         if isinstance(inputFolder, dict):  # dict mode
@@ -179,15 +181,34 @@ class DumperInputManager:
             for singleInputFolder in inputFolder:
                 singleInputFolder = Path(singleInputFolder)
                 assert singleInputFolder.is_dir(), "Input should be a folder or list of folders in folder mode"
+                clusters = {}
+                ids = {}
+                for child in singleInputFolder.iterdir():
+                    clusterNb = int(re.fullmatch(pattern_dumper, child.name).group(1))
+                    sampleNb = int(re.fullmatch(pattern_dumper, child.name).group(2))
+                    if(clusterNb not in clusters.keys()):
+                        clusters[clusterNb] = [sampleNb]
+                    else:
+                        clusters[clusterNb].append(sampleNb)
+                old_keys = list(clusters.keys())
+                new_key_mapping = {}
+                
+                integral = 0
+                for old_key in old_keys:
+                    new_key_mapping[old_key] = integral
+                    integral += max(clusters[old_key])
                 for child in singleInputFolder.iterdir():
                     try:
-                        sampleNb = int(re.fullmatch(pattern_dumper, child.name).group(1))
+                        clusterNb = int(re.fullmatch(pattern_dumper, child.name).group(1))
+                        sampleNb = int(re.fullmatch(pattern_dumper, child.name).group(2))
+                        newIndex = new_key_mapping[clusterNb] + sampleNb
                         try:
                             dumperTypes = _dumperTypesFromFile(child)
                             if len(dumperTypes) > 0:
-                                if sampleNb not in self.inputPerSample:
-                                    self.inputPerSample[sampleNb] = SingleInputReader(sampleNb=sampleNb)
-                                self.inputPerSample[sampleNb].addFile(child, dumperTypes)
+                                # print(self.inputPerSample)
+                                if newIndex not in self.inputPerSample:
+                                    self.inputPerSample[newIndex] = SingleInputReader(sampleNb=newIndex)
+                                self.inputPerSample[newIndex].addFile(child, dumperTypes)
                         except Exception as e:
                             print(e)
                     except AttributeError:

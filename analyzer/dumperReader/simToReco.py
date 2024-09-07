@@ -39,15 +39,54 @@ def CPToTracksterProperties(assocs_bestScore_simToReco_df:pd.DataFrame, trackste
     Parameters :
      - tracksters : dataframe (or zipped akward array) of tracksters with properties to keep
     """
+
     return (assocs_bestScore_simToReco_df
         .join(_convertTsToDataframe(tracksters), on=["eventInternal", "ts_id"])
         .join(simTrackstersCP_df, rsuffix="_CP")
     )
+def CP2HitsToTracksterProperties(assocs_bestScore_simToReco_df:pd.DataFrame, tracksters:Union[ak.Array, pd.DataFrame], simTrackstersCP2Hits_df:pd.DataFrame):
+    """ For each CaloParticle, get the best associated trackster properties
+    Parameters :
+     - tracksters : dataframe (or zipped akward array) of tracksters with properties to keep
+    """
+    return (assocs_bestScore_simToReco_df
+        .join(_convertTsToDataframe(tracksters), on=["eventInternal", "ts_id"])
+        .join(simTrackstersCP2Hits_df, rsuffix="_CP")
+    )
+
+def CPToTracksterProperties_allScores(
+    assocs_allScores_simToReco_df: pd.DataFrame,
+    tracksters: Union[ak.Array, pd.DataFrame],
+    simTrackstersCP_df: pd.DataFrame
+) -> pd.DataFrame:
+    """ 
+    For each CaloParticle, get the properties of all associated tracksters.
+    
+    Parameters:
+     - assocs_allScores_simToReco_df : DataFrame with all associations, not just the best.
+     - tracksters : DataFrame (or zipped awkward array) of tracksters with properties to keep.
+     - simTrackstersCP_df : DataFrame with properties of SimTracksters (CaloParticles).
+     
+    Returns:
+     - DataFrame with CaloParticle properties joined with all associated trackster properties.
+    """
+    # Join trackster properties with the association dataframe
+    print(_convertTsToDataframe(tracksters))
+    joined_df = assocs_allScores_simToReco_df.join(
+        _convertTsToDataframe(tracksters), on=["eventInternal", "ts_id"]
+    )
+
+    # Join with SimTrackster (CaloParticle) properties
+    final_df = joined_df.join(simTrackstersCP_df, rsuffix="_CP")
+
+    return final_df
+
 def CPToTracksterMergedProperties(assocs_bestScore_simToReco_df:pd.DataFrame, tracksters:Union[ak.Array, pd.DataFrame], simTrackstersCP_df:pd.DataFrame):
     """ For each CaloParticle, get the best associated trackster properties
     Parameters :
      - tracksters : dataframe (or zipped akward array) of tracksters with properties to keep
     """
+
     return (assocs_bestScore_simToReco_df
         .join(_convertTsToDataframe(tracksters), on=["eventInternal", "ts_id"])
         .join(simTrackstersCP_df, rsuffix="_CP")
@@ -92,4 +131,26 @@ def getCPToSuperclusterProperties(supercluster_all_df:pd.DataFrame, assocs_bestS
 
     # TODO technically 2 CaloParticle could be matched to the same trackster. What would happen ?
 
-
+def TracksterToCPProperties(assocs_allScores_recoToSim_df: pd.DataFrame, 
+                            tracksters: Union[ak.Array, pd.DataFrame], 
+                            simTrackstersCP_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    For each CaloParticle, get all associated trackster properties.
+    
+    Parameters:
+     - assocs_allScores_recoToSim_df : DataFrame containing associations from recoToSim.
+     - tracksters : DataFrame or awkward array of tracksters with properties to keep.
+     - simTrackstersCP_df : DataFrame of simTracksters (CaloParticles) properties to join.
+    
+    Returns:
+     - A DataFrame with the properties of associated tracksters for each CaloParticle.
+    """
+    # Convert tracksters to a DataFrame if it's an awkward array
+    tracksters_df = _convertTsToDataframe(tracksters)
+    
+    # Perform the joins
+    result_df = (assocs_allScores_recoToSim_df
+                 .join(tracksters_df, on=["eventInternal", "ts_id"])
+                 .join(simTrackstersCP_df, rsuffix="_CP"))
+    
+    return result_df

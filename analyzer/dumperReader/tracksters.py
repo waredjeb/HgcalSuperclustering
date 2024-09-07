@@ -6,6 +6,7 @@ from typing import Union
 from .assocs import assocs_toDf
 
 trackster_basic_fields = ["ts_id", "raw_energy", "raw_em_energy", "regressed_energy", "raw_pt", "raw_em_pt", "barycenter_eta", "barycenter_phi", 'barycenter_x', 'barycenter_y']
+simTrackster_basic_fields = ["raw_energy", "regressed_energy", "barycenter_eta", "barycenter_phi", 'barycenter_x', 'barycenter_y']
 
 def tracksters_toDf(tracksters:ak.Array) -> pd.DataFrame:
     """ Makes a dataframe with all tracksters
@@ -35,6 +36,7 @@ def _convertTsToDataframe(tracksters:Union[ak.Array,pd.DataFrame]) -> pd.DataFra
         return tracksters_toDf(tracksters)
     else:
         return tracksters
+
 
 def tracksters_joinWithSimTracksters(tracksters:ak.Array, simTracksters:ak.Array, assoc:ak.Array, score_threshold=assocs_toDf.__defaults__[0]) -> pd.DataFrame:
     """ Make a merged dataframe holding trackster information joined with the sim tracksters information.
